@@ -1,7 +1,7 @@
 # RoleBot
 
 This is Roles Bot. It can give different roles to the users, And you can ping all the members of that role by just pinging the role.
-Something like discord roles in server. I tried to replicate that. It doesnt have that many features like discord but it works.
+Something like discord roles in server. I tried to replicate that. It doesnt have that many features like discord but it works.(Maybe)
 Access the bot: <a href = "https://t.me/MrRolesbot">@MrRolesbot</a>
 
 <h4>Commands:</h4>
