@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32526.322
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "roleBot", "roleBot.csproj", "{784627B3-3982-4C76-A846-9FD12945BB33}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{784627B3-3982-4C76-A846-9FD12945BB33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{784627B3-3982-4C76-A846-9FD12945BB33}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{784627B3-3982-4C76-A846-9FD12945BB33}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{784627B3-3982-4C76-A846-9FD12945BB33}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F87028E7-49C0-4C32-830D-3FEC2B555105}
+	EndGlobalSection
+EndGlobal
