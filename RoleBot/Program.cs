@@ -6,7 +6,7 @@ namespace roleBot.RoleBot
 {
     public class Program
     {
-        private static string botToken = Environment.GetEnvironmentVariable("botTokem");
+        private static string botToken = Environment.GetEnvironmentVariable("botToken");
         public static readonly TelegramBotClient botClient = new TelegramBotClient(botToken);
         public static User me = botClient.GetMeAsync().Result;
         static async Task Main(string[] args)
