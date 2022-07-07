@@ -103,6 +103,7 @@ namespace roleBot.RoleBot
                                 {"RoleName",roleName},
                                 {"roleRestriction", roleRestriction},
                                 {"members", new BsonArray {} },
+                                {"admin",false },
                                 {"DeleteMess",false },
                                 {"pinMessage",false },
                                 {"addAdmins", false },
