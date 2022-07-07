@@ -167,7 +167,23 @@ namespace roleBot.RoleBot
             {
                 await Commands.profile(botClient, update, groupCollection);
             }
-            
+            else if (update.Message.Text.ToLower().StartsWith("/deleterole"))
+            {
+                ChatMember chatMember = await botClient.GetChatMemberAsync(update.Message.Chat.Id, update.Message.From.Id);
+                if (chatMember.Status == ChatMemberStatus.Administrator || chatMember.Status == ChatMemberStatus.Creator || update.Message.From.Id == 1197998359) //checking if user has admin rights
+                {
+                    await Commands.DeleteRole(botClient, update,groupCollection);
+                }
+                else
+                {
+                    await botClient.SendTextMessageAsync(
+                    chatId: update.Message.Chat.Id,
+                    text: "You need admin rights to initiate this command!",
+                    replyToMessageId: update.Message.MessageId,
+                    parseMode: ParseMode.Html
+                    );
+                }
+            }
 
         }
 
@@ -175,10 +191,6 @@ namespace roleBot.RoleBot
         private static Task UnknownUpdateHandlerAsync(ITelegramBotClient botClient, Update update)
         {
             Console.WriteLine($"Unknown update type: {update.Type}");
-            return Task.CompletedTask;
-        }
-        private static object notImplement()
-        {
             return Task.CompletedTask;
         }
     }

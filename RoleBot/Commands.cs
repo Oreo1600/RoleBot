@@ -60,8 +60,10 @@ namespace roleBot.RoleBot
                     await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Please specify a Role Name.\nUsage: /AddRole RoleName", replyToMessageId: update.Message.MessageId);
                 }
 
-                BsonDocument grpupDataNew = Database.getGroupData(update).Result.Add(messageSplit[1], new BsonArray());
-                await groupCollection.ReplaceOneAsync(Database.getGroupFilter(update), grpupDataNew);
+                /*BsonDocument grpupDataNew = Database.getGroupData(update).Result.Add(messageSplit[1], new BsonArray());
+                await groupCollection.ReplaceOneAsync(Database.getGroupFilter(update), grpupDataNew);*/
+
+                await Database.AddRole(update, messageSplit[1], "None");
 
                 var roleUpdate = Builders<BsonDocument>.Update.Push<string>("rolesList", messageSplit[1]);
                 await groupCollection.UpdateOneAsync(Database.getGroupFilter(update), roleUpdate);
@@ -76,33 +78,38 @@ namespace roleBot.RoleBot
         }
         public static async Task<Message> AddUser(ITelegramBotClient botClient, Update update, IMongoCollection<BsonDocument> groupCollection)
         {
+            //checking if chat is not a group
             if (update.Message.Chat.Type != ChatType.Group && update.Message.Chat.Type != ChatType.Supergroup)
             {
                 return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "This command is only available inside a group.", replyToMessageId: update.Message.MessageId);
             }
             try
             {
+                //checking the right parameters
                 string[] messageSplit = update.Message.Text.Split(' ');
                 if (messageSplit.Length == 1)
                 {
                     return
                     await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Please specify a Role Name while replying to a user.\nUsage: /GiveRole rolename", replyToMessageId: update.Message.MessageId);
                 }
+
+                //checking if role exist
                 BsonArray roleList = Database.getGroupData(update).Result.GetValue("rolesList").AsBsonArray;
-
-
                 if (!roleList.Contains(messageSplit[1]))
                 {
                     return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "There isn't any role with that name!", replyToMessageId: update.Message.MessageId);
                 }
 
-                if (update.Message.ReplyToMessage != null)
+                //Adding user to the role
+                if (update.Message.ReplyToMessage != null) //check if reply message is not null
                 {
                     long tpUserid = update.Message.ReplyToMessage.From.Id;
                     Console.WriteLine(tpUserid);
 
-                    var roleUserFilter = Builders<BsonDocument>.Filter.Eq("useridRole", tpUserid);
+                    var roleUserFilter = Builders<BsonDocument>.Filter.Eq("useridRole", tpUserid);      //get the third person userdata
                     BsonDocument tpUserdata = await groupCollection.Find(roleUserFilter).FirstAsync();
+
+                    //checking if user already has the role
                     if (tpUserdata.GetValue("roles").AsBsonArray.Contains(messageSplit[1]))
                     {
                         return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "This user already has this role!", replyToMessageId: update.Message.MessageId);
@@ -110,8 +117,8 @@ namespace roleBot.RoleBot
 
                     ChatMember rollUser = await botClient.GetChatMemberAsync(update.Message.Chat.Id, tpUserid);
                     
-                    var roleUpdate = Builders<BsonDocument>.Update.Push<long>(messageSplit[1], rollUser.User.Id);
-                    await groupCollection.UpdateOneAsync(Database.getGroupFilter(update), roleUpdate);
+                    var roleUpdate = Builders<BsonDocument>.Update.Push<long>("members", rollUser.User.Id);
+                    await groupCollection.UpdateOneAsync(Database.getRoleFilter(messageSplit[1]), roleUpdate);
 
                     var rollAddUpdate = Builders<BsonDocument>.Update.Push<string>("roles", messageSplit[1]);
                     await groupCollection.UpdateOneAsync(roleUserFilter, rollAddUpdate);
@@ -134,12 +141,10 @@ namespace roleBot.RoleBot
                 if (e.Message == "Sequence contains no elements")
                 {
                     Console.WriteLine(e.Message + e.StackTrace);
-                    return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "In order to give a role to user, User must need to have send one message after adding me to the group!", replyToMessageId: update.Message.MessageId);
+                    return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "In order to give a role to user,\n1.User must be in the group.\n2.User must need to have send one message after adding me to the group!\nIf the issue still persist contact the support group!", replyToMessageId: update.Message.MessageId);
                 }
                 return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Unexpected Error!\n"+ e.Message + e.StackTrace, replyToMessageId: update.Message.MessageId);
             }
-
-
         }
 
         public static async Task<Message> profile(ITelegramBotClient botClient, Update update, IMongoCollection<BsonDocument> groupCollection)
@@ -159,7 +164,7 @@ namespace roleBot.RoleBot
             string userRolls = " ";
             for (int i = 0; i < roles.Count; i++)
             {
-                userRolls = userRolls + roles[i].ToString() + " ,";
+                userRolls = userRolls + " - " + roles[i].ToString() + "\n";
             }
             try
             {
@@ -175,7 +180,7 @@ namespace roleBot.RoleBot
                         $"👤 Name : {update.Message.From.FirstName + update.Message.From.LastName}\n" +
                         $"🆔 User Id : <code>{update.Message.From.Id}</code>\n\n" +
                         $"✏️Bio : <code>{bio}</code>\n" +
-                        $"👥 Roles: {userRolls}",
+                        $"👥 Roles:\n{userRolls}",
                         
                         parseMode: ParseMode.Html
                     );
@@ -219,7 +224,7 @@ namespace roleBot.RoleBot
                     string groupRolls = "";
                     for (int i = 0; i < rolesList.Count; i++)
                     {
-                        groupRolls = groupRolls + "- "+rolesList[i].ToString() +"\n";
+                        groupRolls = groupRolls + " - "+rolesList[i].ToString() +"\n";
                     }
 
                     return await botClient.SendTextMessageAsync
@@ -235,13 +240,9 @@ namespace roleBot.RoleBot
                 catch (Exception e)
                 {
                     return await botClient.SendTextMessageAsync(update.Message.Chat.Id, e.Message);
-                }
-                
-                
-                
-                               
+                }              
             }
-            else if (update.Message.Entities[0].Type == MessageEntityType.TextMention)
+            else if (update.Message.Entities[1].Type == MessageEntityType.TextMention)
             {
                 User rollUser = update.Message.Entities.First(x => x.User is not null).User;
 
@@ -252,7 +253,7 @@ namespace roleBot.RoleBot
                 string userRolls = " ";
                 for (int i = 0; i < roles.Count; i++)
                 {
-                    userRolls = userRolls + roles[i].ToString() + " , ";
+                    userRolls = userRolls + " - " + roles[i].ToString() + "\n";
                 }
                 try
                 {
@@ -268,7 +269,7 @@ namespace roleBot.RoleBot
                             $"👤 Name : {rollUser.FirstName + rollUser.LastName}\n" +
                             $"🆔 User Id : <code>{rollUser.Id}</code>\n\n" +
                             $"✏️Bio : <code>{bio}</code>\n" +
-                            $"👥 Roles: {userRolls}",
+                            $"👥 Roles:\n{userRolls}",
 
                             parseMode: ParseMode.Html
                         );
@@ -308,54 +309,73 @@ namespace roleBot.RoleBot
             }
             else
             {
-                var tpUserFilter = Builders<BsonDocument>.Filter.Eq("userNameRole", update.Message.Text.Split(" ")[1]);
-                BsonDocument tpUserdata = await groupCollection.Find(tpUserFilter).FirstAsync();
-                long tpUserid = tpUserdata.GetValue("useridRole").AsInt64;
-                ChatMember rollUser = await botClient.GetChatMemberAsync(update.Message.Chat.Id, tpUserid);
-
-                BsonDocument userData = await Database.getGroupCollection(update).Find(tpUserFilter).FirstAsync();
-                BsonArray roles = userData.GetValue("roles").AsBsonArray;
-                string bio = userData.GetValue("Bio").AsString;
-                string userRolls = " ";
-                for (int i = 0; i < roles.Count; i++)
-                {
-                    userRolls = userRolls+ roles[i].ToString() + " , ";
-                }
                 try
                 {
-                    //getting user profile picture
-                    UserProfilePhotos photo = await botClient.GetUserProfilePhotosAsync(rollUser.User.Id);
-                    string fileid = photo.Photos[0][0].FileId;
-                    Telegram.Bot.Types.File pfp = await botClient.GetFileAsync(fileid);
+                    var tpUserFilter = Builders<BsonDocument>.Filter.Eq("userNameRole", update.Message.Text.Split(" ")[1]);
+                    BsonDocument tpUserdata = await groupCollection.Find(tpUserFilter).FirstAsync();
+                    long tpUserid = tpUserdata.GetValue("useridRole").AsInt64;
+                    ChatMember rollUser = await botClient.GetChatMemberAsync(update.Message.Chat.Id, tpUserid);
 
-                    return await botClient.SendPhotoAsync
-                        (
-                            update.Message.Chat.Id,
-                            pfp.FileId,
-                            $"👤 Name : {rollUser.User.FirstName + rollUser.User.LastName}\n" +
-                            $"🆔 User Id : <code>{rollUser.User.Id}</code>\n\n" +
-                            $"✏️Bio : <code>{bio}</code>\n" +
-                            $"👥 Roles: {userRolls}",
-
-                            parseMode: ParseMode.Html
-                        );
-                }
-                catch (Exception ex)
-                {
-                    if (ex.Message == "Index was outside the bounds of the array.")
+                    BsonDocument userData = await Database.getGroupCollection(update).Find(tpUserFilter).FirstAsync();
+                    BsonArray roles = userData.GetValue("roles").AsBsonArray;
+                    string bio = userData.GetValue("Bio").AsString;
+                    string userRolls = " ";
+                    for (int i = 0; i < roles.Count; i++)
                     {
-                        return await botClient.SendTextMessageAsync
-                        (
-                            update.Message.Chat.Id,
-                            $"👤 Name : {rollUser.User.FirstName + rollUser.User.LastName}\n" +
-                            $"🆔 User Id : <code>{rollUser.User.Id}</code>\n\n" +
-                            $"✏️Bio : <code>{bio}</code>\n" +
-                            $"👥 Roles: {userRolls}",
-
-                            parseMode: ParseMode.Html
-                        );
+                        userRolls = userRolls + " - " + roles[i].ToString() + "\n";
                     }
-                    else if(ex.Message == "Sequence contains no elements")
+                    try
+                    {
+                        //getting user profile picture
+                        UserProfilePhotos photo = await botClient.GetUserProfilePhotosAsync(rollUser.User.Id);
+                        string fileid = photo.Photos[0][0].FileId;
+                        Telegram.Bot.Types.File pfp = await botClient.GetFileAsync(fileid);
+
+                        return await botClient.SendPhotoAsync
+                            (
+                                update.Message.Chat.Id,
+                                pfp.FileId,
+                                $"👤 Name : {rollUser.User.FirstName + rollUser.User.LastName}\n" +
+                                $"🆔 User Id : <code>{rollUser.User.Id}</code>\n\n" +
+                                $"✏️Bio : <code>{bio}</code>\n" +
+                                $"👥 Roles:\n{userRolls}",
+
+                                parseMode: ParseMode.Html
+                            );
+                    }
+                    catch (Exception ex)
+                    {
+                        if (ex.Message == "Index was outside the bounds of the array.")
+                        {
+                            return await botClient.SendTextMessageAsync
+                            (
+                                update.Message.Chat.Id,
+                                $"👤 Name : {rollUser.User.FirstName + rollUser.User.LastName}\n" +
+                                $"🆔 User Id : <code>{rollUser.User.Id}</code>\n\n" +
+                                $"✏️Bio : <code>{bio}</code>\n" +
+                                $"👥 Roles: {userRolls}",
+
+                                parseMode: ParseMode.Html
+                            );
+                        }
+                        else if (ex.Message == "Sequence contains no elements")
+                        {
+                            return await botClient.SendTextMessageAsync
+                            (
+                                update.Message.Chat.Id,
+                                "User not found in the database!"
+                            );
+                        }
+                    }
+                    return await botClient.SendTextMessageAsync
+                           (
+                               update.Message.Chat.Id,
+                               "Some Error Occured"
+                           );
+                }
+                catch (Exception e)
+                {
+                    if (e.Message == "Sequence contains no elements")
                     {
                         return await botClient.SendTextMessageAsync
                         (
@@ -363,12 +383,13 @@ namespace roleBot.RoleBot
                             "User not found in the database!"
                         );
                     }
+                    return await botClient.SendTextMessageAsync
+                           (
+                               update.Message.Chat.Id,
+                               "Some Error Occured"
+                           );
                 }
-                return await botClient.SendTextMessageAsync
-                       (
-                           update.Message.Chat.Id,
-                           "Some Error Occured"
-                       );
+                
             }
         }
         public static async Task ping(ITelegramBotClient botClient, Update update, string role)
@@ -384,7 +405,7 @@ namespace roleBot.RoleBot
 
                 if (roleList.Contains(role))
                 {
-                    BsonArray users = groupData.GetValue(role).AsBsonArray;
+                    BsonArray users = Database.getRoleData(update,role).Result.GetValue("members").AsBsonArray;
                     ChatMember[] userArray = new ChatMember[users.Count()];
                     int usersAffected = 0;
                     for (int i = 0; i < users.Count; i++)
@@ -396,6 +417,7 @@ namespace roleBot.RoleBot
                         }
                         catch (Exception e)
                         {
+                            Console.WriteLine(e.Message);
                             if (e.Message == "Bad Request: user not found")
                             {
                                 continue;
@@ -403,33 +425,40 @@ namespace roleBot.RoleBot
                         }
                     }
                     int count = usersAffected - 1;
-                    while (count > 0)
+                    while (count >= 0)
                     {
-                        string message = "";
-                        if (count >= 6)
+                        try
                         {
-                            for (int j = 0; j < 6;j++)
+                            string message = "";
+                            if (count >= 6)
                             {
-                                message = message + $" [{userArray[count].User.FirstName}](tg://user?id={userArray[count].User.Id}) , ";
-                                count--;
+                                for (int j = 0; j < 6; j++)
+                                {
+                                    message = message + $" [{userArray[count].User.FirstName}](tg://user?id={userArray[count].User.Id}) , ";
+                                    count--;
+                                }
+                                await botClient.SendTextMessageAsync(update.Message.Chat.Id, message, ParseMode.Markdown, replyToMessageId: update.Message.MessageId);
                             }
-                            await botClient.SendTextMessageAsync(update.Message.Chat.Id, message, ParseMode.Markdown, replyToMessageId: update.Message.MessageId);
+                            else
+                            {
+                                for (int i = count; i >= 0; i--)
+                                {
+                                    message = message + $" [{userArray[i].User.FirstName}](tg://user?id={userArray[i].User.Id}) , ";
+                                    count--;
+                                }
+                                await botClient.SendTextMessageAsync(update.Message.Chat.Id, message, ParseMode.Markdown, replyToMessageId: update.Message.MessageId);
+                                break;
+                            }
                         }
-                        else
+                        catch (Exception er)
                         {
-                            for (int i = count; i >= 0; i--)
-                            {
-                                message = message + $" [{userArray[i].User.FirstName}](tg://user?id={userArray[i].User.Id}) , ";
-                                count--;
-                            }
-                            await botClient.SendTextMessageAsync(update.Message.Chat.Id, message, ParseMode.Markdown, replyToMessageId: update.Message.MessageId);
-                            break;
+                            Console.WriteLine(er.Message);
                         }
                     }
                 }
             }
             catch (Exception e)
-            {
+            {               
                 Console.WriteLine(e.Message + e.StackTrace);
             }
             
@@ -511,12 +540,12 @@ namespace roleBot.RoleBot
                         return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "This user doesn't have that role to begin with!", replyToMessageId: update.Message.MessageId);
                     }
                     BsonArray userRoles = tpUserdata.GetValue("roles").AsBsonArray;
-                    BsonArray RolesUsers = Database.getGroupData(update).Result.GetValue(messageSplit[1]).AsBsonArray;
+                    BsonArray RolesUsers = Database.getRoleData(update,messageSplit[1]).Result.GetValue("members").AsBsonArray;
                     userRoles.Remove(messageSplit[1]);
                     RolesUsers.Remove(update.Message.ReplyToMessage.From.Id);
 
-                    var roleUpdate = Builders<BsonDocument>.Update.Set(messageSplit[1], userRoles);
-                    await groupCollection.UpdateOneAsync(Database.getGroupFilter(update), roleUpdate);
+                    var roleUpdate = Builders<BsonDocument>.Update.Set("members", RolesUsers);
+                    await groupCollection.UpdateOneAsync(Database.getRoleFilter(messageSplit[1]), roleUpdate);
 
                     var rollAddUpdate = Builders<BsonDocument>.Update.Set("roles", userRoles);
                     await groupCollection.UpdateOneAsync(roleUserFilter, rollAddUpdate);
@@ -538,6 +567,42 @@ namespace roleBot.RoleBot
                 return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Unexpected Error!\n" + e.Message + e.StackTrace, replyToMessageId: update.Message.MessageId);
             }
 
+        }
+
+        public static async Task<Message> DeleteRole(ITelegramBotClient botClient, Update update, IMongoCollection<BsonDocument> groupCollection)
+        {
+            if (update.Message.Chat.Type != ChatType.Group && update.Message.Chat.Type != ChatType.Supergroup)
+            {
+                return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "This command is only available inside a group.", replyToMessageId: update.Message.MessageId);
+            }
+            string[] messageSplit = update.Message.Text.Split(" ");
+            if (messageSplit.Length == 1)
+            {
+                return
+                await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Please specify a Role Name to delete.\nUsage: /deleterole rolename", replyToMessageId: update.Message.MessageId);
+            }
+            BsonArray roleList = Database.getGroupData(update).Result.GetValue("rolesList").AsBsonArray;
+            if (!roleList.Contains(messageSplit[1]))
+            {
+                return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "There isn't any role with that name!", replyToMessageId: update.Message.MessageId);
+            }
+
+            BsonDocument roleData = Database.getRoleData(update, messageSplit[1]).Result;
+
+            if (roleData.GetValue("members").AsBsonArray.Count > 0)
+            {
+                return await botClient.SendTextMessageAsync(update.Message.Chat.Id, $"I cannot delete this role.\nThere are currently {roleData.GetValue("members").AsBsonArray.Count} user(s) has this role! Please remove the role from them first.", replyToMessageId: update.Message.MessageId);
+            }
+
+            await groupCollection.DeleteOneAsync(Database.getRoleFilter(messageSplit[1]));
+
+            BsonArray rolesList = Database.getGroupData(update).Result.GetValue("rolesList").AsBsonArray;
+            bool rem = rolesList.Remove(messageSplit[1]);
+            Console.WriteLine(rem);
+            var roleUpdate = Builders<BsonDocument>.Update.Set("rolesList", rolesList);
+            await groupCollection.UpdateOneAsync(Database.getGroupFilter(update), roleUpdate);
+
+            return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Done!", replyToMessageId: update.Message.MessageId);
         }
     }
 }

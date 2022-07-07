@@ -37,8 +37,8 @@ namespace roleBot.RoleBot
 
                 ChatMember rollUser = await botClient.GetChatMemberAsync(update.Message.Chat.Id, tpUserid);
 
-                var roleUpdate = Builders<BsonDocument>.Update.Push<long>(update.Data, rollUser.User.Id);
-                await groupCollection.UpdateOneAsync(groupDataFilter, roleUpdate);
+                var roleUpdate = Builders<BsonDocument>.Update.Push<long>("members", rollUser.User.Id);
+                await groupCollection.UpdateOneAsync(Database.getRoleFilter(update.Data), roleUpdate);
 
                 var rollAddUpdate = Builders<BsonDocument>.Update.Push<string>("roles", update.Data);
                 await groupCollection.UpdateOneAsync(roleUserFilter, rollAddUpdate);

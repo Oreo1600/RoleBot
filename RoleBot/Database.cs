@@ -27,6 +27,10 @@ namespace roleBot.RoleBot
         {
             return database.GetCollection<BsonDocument>(update.Message.Chat.Id.ToString());
         }
+        public static IMongoCollection<BsonDocument> getGroupCollection(CallbackQuery update)
+        {
+            return database.GetCollection<BsonDocument>(update.Message.Chat.Id.ToString());
+        }
 
         public static async Task<bool> IsCollectionExistsAsync(string collectionName, IMongoClient database)
         {
@@ -66,7 +70,7 @@ namespace roleBot.RoleBot
             var newDoc = new BsonDocument
             {
                 {"groupId",update.Message.Chat.Id},
-                {"rolesList", new BsonArray {"Member"} },
+                {"rolesList", new BsonArray {} },
                 {"memberList", new BsonArray {} }
             };
             await thatCollec.InsertOneAsync(newDoc);
@@ -79,8 +83,32 @@ namespace roleBot.RoleBot
                                 {"userNameRole","@"+ update.Message.From.Username },
                                 {"NameRole",update.Message.From.FirstName },
                                 {"isUserRole",true},
-                                {"roles", new BsonArray {"Member"} },
-                                {"Bio","You can store any Information about yourself here" }
+                                {"roles", new BsonArray {} },
+                                {"Bio","You can store any Information about yourself here" },
+                                {"admin",false },
+                                {"warnsNo",0 },
+                                {"warn1",false },
+                                {"warn1Reason","None" },
+                                {"warn2",false },
+                                {"warn2Reason","None" },
+                                {"warn3",false },
+                                {"warn3Reason","None" }
+                            };
+            await getGroupCollection(update).InsertOneAsync(newDoc);
+        }
+        public static async Task AddRole(Update update, string roleName, string roleRestriction)
+        {
+            var newDoc = new BsonDocument
+                            {
+                                {"RoleName",roleName},
+                                {"roleRestriction", roleRestriction},
+                                {"members", new BsonArray {} },
+                                {"DeleteMess",false },
+                                {"pinMessage",false },
+                                {"addAdmins", false },
+                                {"canWarn",false },
+                                {"canMute",false },
+                                {"canBan",false }
                             };
             await getGroupCollection(update).InsertOneAsync(newDoc);
         }
@@ -88,19 +116,50 @@ namespace roleBot.RoleBot
         {
             return await getGroupCollection(update).Find(getGroupFilter(update)).FirstAsync();
         }
+        public static async Task<BsonDocument> getGroupData(CallbackQuery update)
+        {
+            return await getGroupCollection(update).Find(getGroupFilter(update)).FirstAsync();
+        }
         public static async Task<BsonDocument> getUserData(Update update)
         {
             return await getGroupCollection(update).Find(getUserFilter(update)).FirstAsync();
         }
+        public static async Task<BsonDocument> getUserData(CallbackQuery update)
+        {
+            return await getGroupCollection(update).Find(getUserFilter(update)).FirstAsync();
+        }
+        public static async Task<BsonDocument> getRoleData(Update update,string roleName)
+        {
+            return await getGroupCollection(update).Find(getRoleFilter(roleName)).FirstAsync();
+        }
+        public static async Task<BsonDocument> getRoleData(CallbackQuery update, string roleName)
+        {
+            return await getGroupCollection(update).Find(getRoleFilter(roleName)).FirstAsync();
+        }
+
         public static FilterDefinition<BsonDocument> getGroupFilter(Update update)
         {
             return Builders<BsonDocument>.Filter.Eq("groupId", update.Message.Chat.Id);
         }
+        public static FilterDefinition<BsonDocument> getGroupFilter(CallbackQuery update)
+        {
+            return Builders<BsonDocument>.Filter.Eq("groupId", update.Message.Chat.Id);
+        }
+
+        public static FilterDefinition<BsonDocument> getRoleFilter(string roleName)
+        {
+            return Builders<BsonDocument>.Filter.Eq("RoleName", roleName);
+        }
+
         public static FilterDefinition<BsonDocument> getUserFilter(Update update)
         {
             return Builders<BsonDocument>.Filter.Eq("useridRole", update.Message.From.Id);
         }
-        public static UpdateDefinition<BsonDocument> createUpdateSet(string attribute,object value)
+        public static FilterDefinition<BsonDocument> getUserFilter(CallbackQuery update)
+        {
+            return Builders<BsonDocument>.Filter.Eq("useridRole", update.From.Id);
+        }
+        public static UpdateDefinition<BsonDocument> createUpdateSet(string attribute, object value)
         {
             return Builders<BsonDocument>.Update.Set(attribute, value);
         }
