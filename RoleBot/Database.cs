@@ -118,7 +118,7 @@ namespace roleBot.RoleBot
             try
             {
                 BsonDocument userdata = getUserData(update).Result;
-                if (userdata.GetValue("userNameRole") == null)
+                if (userdata.GetValue("userNameRole") == "@")
                 {
                     if (update.Message.From.Username != null)
                     {
