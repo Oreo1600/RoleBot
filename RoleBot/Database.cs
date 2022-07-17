@@ -124,7 +124,7 @@ namespace roleBot.RoleBot
                     {
                         var usernameUpdate = createUpdateSet("userNameRole", "@"+ update.Message.From.Username);
                         await groupCollection.UpdateOneAsync(getUserFilter(update.Message.From.Id), usernameUpdate);
-                        await Program.botClient.SendTextMessageAsync(update.Message.Chat.Id, update.Message.From.FirstName + " changed their username from " + "null" + " to " + update.Message.From.Username);
+                        Console.WriteLine(update.Message.From.FirstName + " changed their username from " + "nothing" + " to " + update.Message.From.Username);
                         return;
                     }
                     else
@@ -138,7 +138,7 @@ namespace roleBot.RoleBot
                 {
                     var usernameUpdate = createUpdateSet("userNameRole", "@"+ update.Message.From.Username);
                     await groupCollection.UpdateOneAsync(getUserFilter(update.Message.From.Id), usernameUpdate);
-                    await Program.botClient.SendTextMessageAsync(update.Message.Chat.Id, update.Message.From.FirstName + " changed their username from " + username + " to " + update.Message.From.Username);
+                    Console.WriteLine(update.Message.From.FirstName + " changed their username from " + username + " to " + update.Message.From.Username);
                 }
             }
             catch (Exception e)
@@ -157,7 +157,7 @@ namespace roleBot.RoleBot
                 {
                     var nameUpdate = createUpdateSet("NameRole", update.Message.From.FirstName);
                     await groupCollection.UpdateOneAsync(getUserFilter(update.Message.From.Id), nameUpdate);
-                    await Program.botClient.SendTextMessageAsync(update.Message.Chat.Id,update.Message.From.FirstName + " changed their name from " + name + " to " + update.Message.From.FirstName);
+                    Console.WriteLine(update.Message.From.FirstName + " changed their name from " + name + " to " + update.Message.From.FirstName);
                 }
             }
             catch (Exception e)
