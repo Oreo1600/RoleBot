@@ -431,7 +431,6 @@ namespace roleBot.RoleBot
                     string message = "";
                     foreach (var item in pingUser.ToList())
                     {
-                        Console.WriteLine(item.Value + item.Key);
                         if (breakPoint < 6)
                         {
                             message = message + $" [{item.Value}](tg://user?id={item.Key}) , ";
