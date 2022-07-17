@@ -113,6 +113,59 @@ namespace roleBot.RoleBot
                             };
             await getGroupCollection(update).InsertOneAsync(newDoc);
         }
+        public static async Task checkUsername(Update update, IMongoCollection<BsonDocument> groupCollection)
+        {
+            try
+            {
+                BsonDocument userdata = getUserData(update).Result;
+                if (userdata.GetValue("userNameRole") == null)
+                {
+                    if (update.Message.From.Username != null)
+                    {
+                        var usernameUpdate = createUpdateSet("userNameRole", "@"+ update.Message.From.Username);
+                        await groupCollection.UpdateOneAsync(getUserFilter(update.Message.From.Id), usernameUpdate);
+                        await Program.botClient.SendTextMessageAsync(update.Message.Chat.Id, update.Message.From.FirstName + " changed their username from " + "null" + " to " + update.Message.From.Username);
+                        return;
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+                string username = userdata.GetValue("userNameRole").AsString;
+                username = username.Remove(0, 1);
+                if (update.Message.From.Username != username)
+                {
+                    var usernameUpdate = createUpdateSet("userNameRole", "@"+ update.Message.From.Username);
+                    await groupCollection.UpdateOneAsync(getUserFilter(update.Message.From.Id), usernameUpdate);
+                    await Program.botClient.SendTextMessageAsync(update.Message.Chat.Id, update.Message.From.FirstName + " changed their username from " + username + " to " + update.Message.From.Username);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + e.StackTrace);
+            }
+            
+        }
+        public static async Task checkName(Update update, IMongoCollection<BsonDocument> groupCollection)
+        {
+            try
+            {
+                BsonDocument userdata = getUserData(update).Result;
+                string name = userdata.GetValue("NameRole").AsString;
+                if (update.Message.From.FirstName != name)
+                {
+                    var nameUpdate = createUpdateSet("NameRole", update.Message.From.FirstName);
+                    await groupCollection.UpdateOneAsync(getUserFilter(update.Message.From.Id), nameUpdate);
+                    await Program.botClient.SendTextMessageAsync(update.Message.Chat.Id,update.Message.From.FirstName + " changed their name from " + name + " to " + update.Message.From.FirstName);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + e.StackTrace);
+            }
+
+        }
         public static async Task<BsonDocument> getGroupData(Update update)
         {
             return await getGroupCollection(update).Find(getGroupFilter(update)).FirstAsync();
@@ -123,11 +176,11 @@ namespace roleBot.RoleBot
         }
         public static async Task<BsonDocument> getUserData(Update update)
         {
-            return await getGroupCollection(update).Find(getUserFilter(update)).FirstAsync();
+            return await getGroupCollection(update).Find(getUserFilter(update.Message.From.Id)).FirstAsync();
         }
         public static async Task<BsonDocument> getUserData(CallbackQuery update)
         {
-            return await getGroupCollection(update).Find(getUserFilter(update)).FirstAsync();
+            return await getGroupCollection(update).Find(getUserFilter(update.From.Id)).FirstAsync();
         }
         public static async Task<BsonDocument> getRoleData(Update update,string roleName)
         {
@@ -152,13 +205,9 @@ namespace roleBot.RoleBot
             return Builders<BsonDocument>.Filter.Eq("RoleName", roleName);
         }
 
-        public static FilterDefinition<BsonDocument> getUserFilter(Update update)
+        public static FilterDefinition<BsonDocument> getUserFilter(long userid)
         {
-            return Builders<BsonDocument>.Filter.Eq("useridRole", update.Message.From.Id);
-        }
-        public static FilterDefinition<BsonDocument> getUserFilter(CallbackQuery update)
-        {
-            return Builders<BsonDocument>.Filter.Eq("useridRole", update.From.Id);
+            return Builders<BsonDocument>.Filter.Eq("useridRole", userid);
         }
         public static UpdateDefinition<BsonDocument> createUpdateSet(string attribute, object value)
         {

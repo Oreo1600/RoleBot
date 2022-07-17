@@ -43,11 +43,15 @@ namespace roleBot.RoleBot
         }
         private static async Task BotOnCallbackQueryReceived(ITelegramBotClient botClient, CallbackQuery clbq)
         {
-            Console.WriteLine("CallbackQuery");
+            Console.WriteLine(clbq.Data);
             var groupCollection = Database.database.GetCollection<BsonDocument>(clbq.Message.Chat.Id.ToString());
-            if (clbq.Message.ReplyToMessage.Text.ToLower().StartsWith("/populaterole"))
+            if (clbq.Message.ReplyToMessage != null && clbq.Message.ReplyToMessage.Text.ToLower().StartsWith("/populaterole"))
             {
                 await CallbackQueryHandler.populate(botClient, clbq, groupCollection);
+            }
+            else if (clbq.Message.ReplyToMessage != null && clbq.Message.ReplyToMessage.Text.ToLower().StartsWith("/info"))
+            {
+                await CallbackQueryHandler.info(botClient, clbq, groupCollection);
             }
         }
         private static async Task BotOnMessageReceived(ITelegramBotClient botClient, Update update)
@@ -71,14 +75,15 @@ namespace roleBot.RoleBot
 
             var groupCollection = Database.getGroupCollection(update);
 
-            
+            Console.WriteLine("heya");
+            await Database.checkUsername(update, groupCollection);
+            await Database.checkName(update, groupCollection);
             
             string role;
             if (update.Message.Text.Contains('$'))
             {
                 string removedMess = update.Message.Text.Remove(0,update.Message.Text.IndexOf('$') + 1);
                 role = removedMess.Split(" ")[0];
-                Console.WriteLine("inside" + role);
                 await Commands.ping(botClient, update, role);
             }
 
@@ -183,6 +188,10 @@ namespace roleBot.RoleBot
                     parseMode: ParseMode.Html
                     );
                 }
+            }
+            else if (update.Message.Text == "/info" || update.Message.Text == $"/info@{Program.me.Username}")
+            {
+                await Commands.infoAsync(botClient, update);
             }
 
         }
