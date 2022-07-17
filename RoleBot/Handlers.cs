@@ -75,7 +75,6 @@ namespace roleBot.RoleBot
 
             var groupCollection = Database.getGroupCollection(update);
 
-            Console.WriteLine("heya");
             await Database.checkUsername(update, groupCollection);
             await Database.checkName(update, groupCollection);
             
