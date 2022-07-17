@@ -602,6 +602,10 @@ namespace roleBot.RoleBot
 
         public static async Task<Message> infoAsync(ITelegramBotClient botClient, Update update)
         {
+            if (update.Message.Chat.Type != ChatType.Group && update.Message.Chat.Type != ChatType.Supergroup)
+            {
+                return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "This command is only available inside a group.", replyToMessageId: update.Message.MessageId);
+            }
             BsonDocument groupdata = Database.getGroupData(update).Result;
             BsonArray roleList = groupdata.GetValue("rolesList").AsBsonArray;
 
