@@ -26,4 +26,4 @@ Usage: /populateRole ROLE_NAME ROLE_DESCRIPTION</code>
 
 To ping all the members of a role use $roll_name
 
-That's it.
+That's it..
