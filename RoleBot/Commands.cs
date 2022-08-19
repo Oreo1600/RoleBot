@@ -1,5 +1,6 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Collections;
 using System.Linq;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -16,7 +17,7 @@ namespace roleBot.RoleBot
         }
         public static async Task<Message> help(ITelegramBotClient botClient, Update update)
         {
-            return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Commands:\n\n/start - Check if the bot is alive or not\n/setBio - Set your group bio, You can see it in /profile command.\n/AddRole - Add a new Role (admin only)\nUsage: /AddRole Role_Name\n/GiveRole - Give a role to some user.(Reply to a user while sending this command, again admin only)\nUsage - /GiveRole ROLE_NAME\n/removeRole - remove a role from user(Reply to a user while sending this command, again admin only)\nUsage: /removeRole ROLE_NAME\n/deleterole - delete a role entirely from group (Need admin rights)\nUsage: /deleterole ROLE_NAME\n/profile - See your group profile.\nTip - To see the group profile send /profile group \n/populateRole - Make a button which people can click to get the specific role\nUsage: /populateRole ROLE_NAME ROLE_DESCRIPTION\n/info - Get full role and member info of the group.\n\n To ping all the members of a role use $roll_name");
+            return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Commands:\n\n/start - Check if the bot is alive or not\n/setBio - Set your group bio, You can see it in /profile command.\n/AddRole - Add a new Role (admin only)\nUsage: /AddRole Role_Name\nNote:Role name cannot have multiple words with space in between!\n/GiveRole - Give a role to some user.(Reply to a user while sending this command, again admin only)\nUsage - /GiveRole ROLE_NAME\n/removeRole - remove a role from user(Reply to a user while sending this command, again admin only)\nUsage: /removeRole ROLE_NAME\n/deleterole - delete a role entirely from group (Need admin rights)\nUsage: /deleterole ROLE_NAME\n/profile - See your group profile.\nTip - To see the group profile send /profile group \n/populateRole - Make a button which people can click to get the specific role\nUsage: /populateRole ROLE_NAME ROLE_DESCRIPTION\n/info - Get full role and member info of the group.\n\n To ping all the members of a role use $roll_name");
         }
         public static async Task<Message> setBio(ITelegramBotClient botClient, Update update, IMongoCollection<BsonDocument> groupCollection)
         {
@@ -37,7 +38,7 @@ namespace roleBot.RoleBot
 
                 await groupCollection.UpdateOneAsync(Database.getUserFilter(update.Message.From.Id), BioUpdate);
 
-                return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Done!", replyToMessageId: update.Message.MessageId);
+                return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Done!\nNew Bio: " + messageSplit[1], replyToMessageId: update.Message.MessageId);
             }
             catch (Exception e)
             {
@@ -59,6 +60,12 @@ namespace roleBot.RoleBot
                 {
                     return
                     await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Please specify a Role Name.\nUsage: /AddRole RoleName", replyToMessageId: update.Message.MessageId);
+
+                }
+                else if (messageSplit.Length > 2)
+                {
+                    return
+                    await botClient.SendTextMessageAsync(update.Message.Chat.Id, "A Role name with multiple words is not allowed!\nTry the name without space or adding underscore instead of space.", replyToMessageId: update.Message.MessageId);
                 }
 
                 /*BsonDocument grpupDataNew = Database.getGroupData(update).Result.Add(messageSplit[1], new BsonArray());
@@ -69,7 +76,7 @@ namespace roleBot.RoleBot
                 var roleUpdate = Builders<BsonDocument>.Update.Push<string>("rolesList", messageSplit[1]);
                 await groupCollection.UpdateOneAsync(Database.getGroupFilter(update), roleUpdate);
 
-                return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Done!", replyToMessageId: update.Message.MessageId);
+                return await botClient.SendTextMessageAsync(update.Message.Chat.Id, $"The role {messageSplit[1]} is added.", replyToMessageId: update.Message.MessageId);
             }
             catch (Exception e)
             {
@@ -124,7 +131,7 @@ namespace roleBot.RoleBot
                     var rollAddUpdate = Builders<BsonDocument>.Update.Push<string>("roles", messageSplit[1]);
                     await groupCollection.UpdateOneAsync(roleUserFilter, rollAddUpdate);
 
-                    return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Done!", replyToMessageId: update.Message.MessageId);
+                    return await botClient.SendTextMessageAsync(update.Message.Chat.Id, $"{update.Message.ReplyToMessage.From.FirstName} now has the role {messageSplit[1]}!", replyToMessageId: update.Message.MessageId);
                 }
                 else
                 {
@@ -403,10 +410,12 @@ namespace roleBot.RoleBot
             {
                 BsonDocument groupData = Database.getGroupData(update).Result;
                 BsonArray roleList = groupData.GetValue("rolesList").AsBsonArray;
-
-                if (roleList.Contains(role))
+                string[] roleListArray = new string[roleList.Count];
+                roleListArray = roleList.ToList().ConvertAll(x => x.AsString).ToArray();
+                if (roleListArray.Contains(role,StringComparer.OrdinalIgnoreCase))
                 {
-                    BsonArray users = Database.getRoleData(update, role).Result.GetValue("members").AsBsonArray;
+                    int index = Array.FindIndex(roleListArray, x => x.IndexOf(role, StringComparison.OrdinalIgnoreCase) >= 0);
+                    BsonArray users = Database.getRoleData(update, roleListArray[index]).Result.GetValue("members").AsBsonArray;
                     Dictionary<long,string> pingUser = new Dictionary<long,string>();
                     int usersAffected = 0;
                     for (int i = 0; i < users.Count; i++)
@@ -544,7 +553,7 @@ namespace roleBot.RoleBot
                     var rollAddUpdate = Builders<BsonDocument>.Update.Set("roles", userRoles);
                     await groupCollection.UpdateOneAsync(roleUserFilter, rollAddUpdate);
 
-                    return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Done!", replyToMessageId: update.Message.MessageId);
+                    return await botClient.SendTextMessageAsync(update.Message.Chat.Id, $"Removed role {messageSplit[1]} from {update.Message.ReplyToMessage.From.FirstName}!", replyToMessageId: update.Message.MessageId);
                 }
                 else
                 {
@@ -596,7 +605,7 @@ namespace roleBot.RoleBot
             var roleUpdate = Builders<BsonDocument>.Update.Set("rolesList", rolesList);
             await groupCollection.UpdateOneAsync(Database.getGroupFilter(update), roleUpdate);
 
-            return await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Done!", replyToMessageId: update.Message.MessageId);
+            return await botClient.SendTextMessageAsync(update.Message.Chat.Id, $"The role {messageSplit[1]} is now deleted from the group!", replyToMessageId: update.Message.MessageId);
         }
 
         public static async Task<Message> infoAsync(ITelegramBotClient botClient, Update update)
