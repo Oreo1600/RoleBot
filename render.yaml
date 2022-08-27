@@ -1,6 +1,5 @@
 version: '3.4'
 
-services:
   roleBot:
     image: ${DOCKER_REGISTRY-}roleBot
     build:
